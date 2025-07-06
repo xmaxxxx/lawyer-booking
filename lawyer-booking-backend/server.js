@@ -12,7 +12,7 @@ const app = express();
 app.use(cors({
   origin: [
     'http://localhost:5173',
-    'https://lawyer-booking-nxu8rtqxj-amrits-projects-3b1eeeda.vercel.app'
+    'https://lawyer-booking.themernhub.com/'
   ],
   credentials: true
 }));
