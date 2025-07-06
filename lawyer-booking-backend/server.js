@@ -1,16 +1,21 @@
+/* global process */
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 dotenv.config();
 
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://lawyer-booking-nxu8rtqxj-amrits-projects-3b1eeeda.vercel.app'
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 // Health check
