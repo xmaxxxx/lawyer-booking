@@ -25,13 +25,14 @@ function Login() {
 
     try {
       const response = await apiService.login(formData);
+      console.log(response); // <-- Add this
       
       if (response.success) {
         // Store authentication token
-        localStorage.setItem("authToken", response.data.token);
-        localStorage.setItem("userRole", response.data.user.role);
-        localStorage.setItem("userEmail", response.data.user.email);
-        localStorage.setItem("userName", response.data.user.name);
+        localStorage.setItem("authToken", response.token);
+        localStorage.setItem("userRole", response.user.role);
+        localStorage.setItem("userEmail", response.user.email);
+        localStorage.setItem("userName", response.user.name);
         
         // Redirect to admin dashboard
         navigate("/admin");

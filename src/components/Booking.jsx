@@ -25,8 +25,8 @@ function Booking() {
 
   // Calculate pricing based on consultation type and duration
   const calculatePrice = () => {
-    const selectedType = consultationTypes.find(type => type.id === form.consultationType);
-    const basePrice = selectedType ? selectedType.basePrice : 100;
+    const selectedType = getSelectedType();
+    const basePrice = selectedType ? parseFloat(selectedType.price) : 100;
     
     switch(form.duration) {
       case "30": return basePrice * 0.7; // 70% of base price
@@ -41,7 +41,24 @@ function Booking() {
   };
 
   const getSelectedType = () => {
-    return consultationTypes.find(type => type.id === form.consultationType);
+    return consultationTypes.find(type => type.id === form.consultationType || type._id === form.consultationType);
+  };
+
+  // Filter time slots for the selected consultation type
+  const getFilteredSlots = () => {
+    return timeSlots.filter(slot => {
+      if (slot.consultationType && typeof slot.consultationType === 'object') {
+        console.log(
+          'Comparing slot.consultationType._id:',
+          slot.consultationType._id,
+          'with form.consultationType:',
+          form.consultationType
+        );
+        return String(slot.consultationType._id) === String(form.consultationType) ||
+               String(slot.consultationType.id) === String(form.consultationType);
+      }
+      return String(slot.consultationType) === String(form.consultationType);
+    });
   };
 
   const handleNext = () => {
@@ -70,14 +87,20 @@ function Booking() {
           apiService.getTimeSlots()
         ]);
         
-        if (typesResponse.success) {
+        if (typesResponse.success && Array.isArray(typesResponse.data) && typesResponse.data.length > 0) {
           setConsultationTypes(typesResponse.data);
-          setForm(prev => ({ ...prev, consultationType: typesResponse.data[0]?.id || "general" }));
+          setForm(prev => ({ ...prev, consultationType: typesResponse.data[0]._id })); // Always use _id
+        } else {
+          setConsultationTypes([]);
+          setForm(prev => ({ ...prev, consultationType: "" }));
         }
         
-        if (slotsResponse.success) {
+        if (slotsResponse.success && Array.isArray(slotsResponse.data) && slotsResponse.data.length > 0) {
           setTimeSlots(slotsResponse.data);
-          setForm(prev => ({ ...prev, slot: slotsResponse.data[0]?.id || null }));
+          setForm(prev => ({ ...prev, slot: slotsResponse.data[0].id }));
+        } else {
+          setTimeSlots([]);
+          setForm(prev => ({ ...prev, slot: null }));
         }
       } catch {
         setError("Failed to load booking data. Please try again.");
@@ -88,6 +111,24 @@ function Booking() {
     
     loadData();
   }, []);
+
+  // Set default slot when consultationType or timeSlots change
+  useEffect(() => {
+    if (timeSlots.length > 0) {
+      const filtered = getFilteredSlots();
+      if (filtered.length > 0) {
+        setForm(prev => ({ ...prev, slot: filtered[0].id || filtered[0]._id }));
+      } else {
+        setForm(prev => ({ ...prev, slot: null }));
+      }
+    }
+    // eslint-disable-next-line
+  }, [form.consultationType, timeSlots]);
+
+  // Debug logs for troubleshooting slot selection
+  console.log("form.consultationType:", form.consultationType);
+  console.log("timeSlots:", timeSlots);
+  console.log("Filtered slots:", getFilteredSlots());
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -103,6 +144,7 @@ function Booking() {
         ...form,
         price: calculatePrice(),
         consultationTypeName: getSelectedType()?.name,
+        timeSlot: form.slot, // Add this line to fix backend validation
         slotDetails: getSelectedSlot(),
         date: getSelectedSlot()?.date,
         time: getSelectedSlot()?.time
@@ -179,20 +221,20 @@ function Booking() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {consultationTypes.map(type => (
                   <div
-                    key={type.id}
+                    key={type.id || type._id}
                     className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                      form.consultationType === type.id
+                      form.consultationType === type.id || form.consultationType === type._id
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
-                    onClick={() => setForm({ ...form, consultationType: type.id })}
+                    onClick={() => setForm({ ...form, consultationType: type.id || type._id })}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-semibold text-gray-900">{type.name}</h4>
-                      <span className="text-sm font-medium text-blue-600">${type.basePrice}</span>
+                      <span className="text-sm font-medium text-blue-600">${type.price}</span>
                     </div>
                     <p className="text-sm text-gray-600 mb-3">{type.description}</p>
-                    {form.consultationType === type.id && (
+                    {(form.consultationType === type.id || form.consultationType === type._id) && (
                       <div className="text-sm text-green-600 font-medium">✓ Selected</div>
                     )}
                   </div>
@@ -232,22 +274,22 @@ function Booking() {
             <div>
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Select Time Slot</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {timeSlots.map(slot => (
+                {getFilteredSlots().map(slot => (
                   <div
-                    key={slot.id}
+                    key={slot.id || slot._id}
                     className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                      !slot.available
-                        ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
-                        : form.slot === slot.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                      (slot.isAvailable !== false)
+                        ? (form.slot === (slot.id || slot._id)
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300')
+                        : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
                     }`}
-                    onClick={() => slot.available && setForm({ ...form, slot: slot.id })}
+                    onClick={() => (slot.isAvailable !== false) && setForm({ ...form, slot: slot.id || slot._id })}
                   >
                     <div className="text-center">
                       <h4 className="font-semibold text-gray-900">{slot.date}</h4>
-                      <p className="text-lg font-medium text-blue-600">{slot.time}</p>
-                      {!slot.available && (
+                      <p className="text-lg font-medium text-blue-600">{slot.startTime} - {slot.endTime}</p>
+                      {slot.isAvailable === false && (
                         <p className="text-sm text-red-600 mt-1">Unavailable</p>
                       )}
                     </div>

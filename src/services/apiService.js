@@ -1,46 +1,24 @@
 import { mockAPI } from '../data/mockData';
-import { API_BASE_URL, API_ENDPOINTS, buildApiUrl } from '../config/api.js';
+import { API_BASE_URL, API_ENDPOINTS } from '../config/api.js';
 
 // API Service Layer
 // This service layer abstracts API calls and can be easily replaced with real API endpoints
 
 // Helper function to make API calls
-const apiCall = async (endpoint, options = {}) => {
-  const url = buildApiUrl(endpoint);
-  const config = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
-  };
-
-  // Add auth token if available
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  try {
-    const response = await fetch(url, config);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('API call failed:', error);
-    throw error;
-  }
-};
+// const apiCall = async (endpoint, options = {}) => { ... }
 
 class ApiService {
   // Consultation Types
   async getConsultationTypes() {
     try {
-      const response = await mockAPI.getConsultationTypes();
-      return response;
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.CONSULTATIONS}`);
+      const data = await response.json();
+      // Return array of consultations (types)
+      if (data.success && Array.isArray(data.consultations)) {
+        return { success: true, data: data.consultations };
+      } else {
+        return { success: false, data: [] };
+      }
     } catch (error) {
       console.error('Error fetching consultation types:', error);
       throw error;
@@ -50,19 +28,60 @@ class ApiService {
   // Time Slots
   async getTimeSlots(date = null) {
     try {
-      const response = await mockAPI.getTimeSlots(date);
-      return response;
+      let url = `${API_BASE_URL}${API_ENDPOINTS.TIME_SLOTS}`;
+      if (date) {
+        url += `?date=${encodeURIComponent(date)}`;
+      }
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error('Error fetching time slots:', error);
       throw error;
     }
   }
 
+  // Create a new time slot
+  async createTimeSlot(slotData) {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.TIME_SLOTS}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(slotData)
+    });
+    return await response.json();
+  }
+
+  // Delete a time slot
+  async deleteTimeSlot(slotId) {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.TIME_SLOTS}/${slotId}`, {
+      method: 'DELETE',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    return await response.json();
+  }
+
   // Bookings
   async getBookings(filters = {}) {
     try {
-      const response = await mockAPI.getBookings(filters);
-      return response;
+      let url = `${API_BASE_URL}${API_ENDPOINTS.BOOKINGS}`;
+      const params = new URLSearchParams(filters).toString();
+      if (params) {
+        url += `?${params}`;
+      }
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error('Error fetching bookings:', error);
       throw error;
@@ -71,8 +90,16 @@ class ApiService {
 
   async createBooking(bookingData) {
     try {
-      const response = await mockAPI.createBooking(bookingData);
-      return response;
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.BOOKINGS}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(bookingData)
+      });
+      return await response.json();
     } catch (error) {
       console.error('Error creating booking:', error);
       throw error;
@@ -124,8 +151,12 @@ class ApiService {
   // Authentication
   async login(credentials) {
     try {
-      const response = await mockAPI.login(credentials);
-      return response;
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.LOGIN}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials)
+      });
+      return await response.json();
     } catch (error) {
       console.error('Error during login:', error);
       throw error;

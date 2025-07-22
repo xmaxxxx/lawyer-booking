@@ -1,56 +1,143 @@
 import React, { useState, useEffect } from "react";
 import EmailTemplatePreview from "./EmailTemplates";
 import apiService from "../services/apiService";
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
+import './AdminCalendar.css'; // Add this import for custom styles
 
 function Admin() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [bookings, setBookings] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
+  const [consultationTypes, setConsultationTypes] = useState([]); // Add state for consultation types
   const [newSlot, setNewSlot] = useState({
     date: '',
     time: '',
     duration: '30',
     price: '',
-    type: 'general'
+    consultationType: '' // Add consultationType to newSlot
   });
+  const [error, setError] = useState(null);
 
   // Load data from API
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [bookingsResponse, slotsResponse] = await Promise.all([
+        const [bookingsResponse, slotsResponse, typesResponse] = await Promise.all([
           apiService.getBookings(),
-          apiService.getTimeSlots()
+          apiService.getTimeSlots(),
+          apiService.getConsultationTypes()
         ]);
-        
-        if (bookingsResponse.success) {
+
+        if (bookingsResponse.success && Array.isArray(bookingsResponse.data)) {
           setBookings(bookingsResponse.data);
+        } else {
+          setBookings([]); // Always set to an array
         }
-        
-        if (slotsResponse.success) {
+
+        if (slotsResponse.success && Array.isArray(slotsResponse.data)) {
           setTimeSlots(slotsResponse.data);
+        } else {
+          setTimeSlots([]); // Always set to an array
         }
-      } catch {
-        console.error('Error loading admin data');
+
+        if (typesResponse.success && Array.isArray(typesResponse.data)) {
+          setConsultationTypes(typesResponse.data);
+          console.log('Consultation Types:', typesResponse.data); // Debug log
+          // Set default consultationType if not set
+          setNewSlot(prev => ({ ...prev, consultationType: typesResponse.data[0]?._id || '' }));
+        } else {
+          setConsultationTypes([]);
+        }
+        setError(null);
+      } catch (err) {
+        setError('Failed to load data. Please check your login or try again.');
+        setBookings([]);
+        setTimeSlots([]);
+        setConsultationTypes([]);
       }
     };
-    
+
     loadData();
   }, []);
 
-  const handleAddSlot = (e) => {
+  // Ensure default consultationType is set after types load
+  useEffect(() => {
+    if (
+      consultationTypes.length > 0 &&
+      (!newSlot.consultationType || !consultationTypes.some(type => type._id === newSlot.consultationType))
+    ) {
+      setNewSlot(prev => ({ ...prev, consultationType: consultationTypes[0]._id }));
+    }
+  }, [consultationTypes, newSlot.consultationType]);
+
+  // Debug: log newSlot state
+  console.log('newSlot:', newSlot);
+
+  const handleAddSlot = async (e) => {
     e.preventDefault();
-    const slot = {
-      id: Date.now(),
-      ...newSlot,
-      available: true
-    };
-    setTimeSlots([...timeSlots, slot]);
-    setNewSlot({ date: '', time: '', duration: '30', price: '', type: 'general' });
+    if (!newSlot.consultationType) {
+      setError('Please select a consultation type.');
+      return;
+    }
+    try {
+      // Calculate endTime based on startTime and duration
+      const [startHour, startMinute] = newSlot.time.split(':').map(Number);
+      const durationMinutes = parseInt(newSlot.duration, 10);
+      const startDate = new Date();
+      startDate.setHours(startHour, startMinute, 0, 0);
+      const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+      const endHour = String(endDate.getHours()).padStart(2, '0');
+      const endMinute = String(endDate.getMinutes()).padStart(2, '0');
+      const endTime = `${endHour}:${endMinute}`;
+
+      const slot = {
+        ...newSlot,
+        date: newSlot.date,
+        startTime: newSlot.time,
+        endTime,
+        consultationType: newSlot.consultationType, // Ensure this is present
+      };
+      delete slot.time;
+      delete slot.duration;
+      delete slot.price;
+      delete slot.available;
+      console.log('Slot payload:', slot); // Debug log
+      const response = await apiService.createTimeSlot(slot);
+      if (response.success) {
+        // Reload slots from backend
+        const slotsResponse = await apiService.getTimeSlots();
+        if (slotsResponse.success && Array.isArray(slotsResponse.data)) {
+          setTimeSlots(slotsResponse.data);
+        } else {
+          setTimeSlots([]);
+        }
+        setNewSlot({ date: '', time: '', duration: '30', price: '', consultationType: consultationTypes[0]?.id || '' });
+      } else {
+        setError('Failed to add slot.');
+      }
+    } catch (err) {
+      setError('Failed to add slot.');
+    }
   };
 
-  const handleDeleteSlot = (id) => {
-    setTimeSlots(timeSlots.filter(slot => slot.id !== id));
+  const handleDeleteSlot = async (id) => {
+    try {
+      const response = await apiService.deleteTimeSlot(id);
+      if (response.success) {
+        // Reload slots from backend
+        const slotsResponse = await apiService.getTimeSlots();
+        if (slotsResponse.success && Array.isArray(slotsResponse.data)) {
+          setTimeSlots(slotsResponse.data);
+        } else {
+          setTimeSlots([]);
+        }
+      } else {
+        setError('Failed to delete slot.');
+      }
+    } catch (err) {
+      setError('Failed to delete slot.');
+    }
   };
 
   const handleBookingStatusChange = (bookingId, newStatus) => {
@@ -110,6 +197,10 @@ function Admin() {
           ))}
         </nav>
       </div>
+
+      {error && (
+        <div className="bg-red-100 text-red-700 p-4 mb-4 rounded">{error}</div>
+      )}
 
       {/* Dashboard Overview */}
       {activeTab === 'dashboard' && (
@@ -196,8 +287,8 @@ function Admin() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {bookings.map(booking => (
-                  <tr key={booking.id}>
+                {Array.isArray(bookings) && bookings.map(booking => (
+                  <tr key={booking._id || booking.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{booking.clientName}</div>
@@ -295,8 +386,29 @@ function Admin() {
                   required
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Consultation Type</label>
+                {consultationTypes.length > 0 ? (
+                  <select
+                    value={newSlot.consultationType || consultationTypes[0]._id}
+                    onChange={(e) => setNewSlot({...newSlot, consultationType: e.target.value})}
+                    className="form-select"
+                    required
+                  >
+                    {consultationTypes.map(type => (
+                      <option key={type._id} value={type._id}>{type.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div>Loading consultation types...</div>
+                )}
+              </div>
               <div className="flex items-end">
-                <button type="submit" className="btn-primary w-full">
+                <button
+                  type="submit"
+                  className="btn-primary w-full"
+                  disabled={!newSlot.consultationType || consultationTypes.length === 0}
+                >
                   Add Slot
                 </button>
               </div>
@@ -308,14 +420,14 @@ function Admin() {
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Available Time Slots</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {timeSlots.map(slot => (
-                <div key={slot.id} className="border border-gray-200 rounded-lg p-4">
+                <div key={slot._id || slot.id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <h3 className="font-medium text-gray-900">{slot.date}</h3>
-                      <p className="text-sm text-gray-600">{slot.time}</p>
+                      <p className="text-sm text-gray-600">{slot.startTime}</p>
                     </div>
                     <button
-                      onClick={() => handleDeleteSlot(slot.id)}
+                      onClick={() => handleDeleteSlot(slot._id || slot.id)}
                       className="text-red-600 hover:text-red-800"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -337,19 +449,30 @@ function Admin() {
         </div>
       )}
 
-      {/* Calendar View */}
+      {/* Calendar Tab */}
       {activeTab === 'calendar' && (
-        <div className="card">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Calendar View</h2>
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Calendar Integration</h3>
-            <p className="text-gray-600">Full calendar view will be implemented with backend integration</p>
-          </div>
+        <div className="card flex flex-col items-center justify-center py-12">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Calendar View</h2>
+          <Calendar 
+            value={new Date()}
+            tileClassName={({ date, view }) => {
+              if (view === 'month') {
+                const hasBooking = bookings.some(booking => {
+                  const bookingDate = new Date(booking.date);
+                  return bookingDate.toDateString() === date.toDateString();
+                });
+                const hasSlot = timeSlots.some(slot => {
+                  const slotDate = new Date(slot.date);
+                  return slotDate.toDateString() === date.toDateString();
+                });
+                if (hasBooking && hasSlot) return 'booked-day slot-day';
+                if (hasBooking) return 'booked-day';
+                if (hasSlot) return 'slot-day';
+                return null;
+              }
+              return null;
+            }}
+          />
         </div>
       )}
 

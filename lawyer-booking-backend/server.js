@@ -23,6 +23,11 @@ app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'API is running' });
 });
 
+// Simple hello endpoint for testing
+app.get('/api/hello', (req, res) => {
+  res.json({ message: 'Hello from backend!' });
+});
+
 // Import routes
 import authRoutes from './routes/auth.js';
 import bookingsRoutes from './routes/bookings.js';

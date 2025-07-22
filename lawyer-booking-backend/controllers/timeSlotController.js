@@ -9,7 +9,8 @@ export const createTimeSlot = async (req, res) => {
     await timeSlot.populate('consultationType');
     res.status(201).json({ success: true, timeSlot });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Create TimeSlot Error:', error); // Log the real error
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -17,8 +18,8 @@ export const getTimeSlots = async (req, res) => {
   try {
     const timeSlots = await TimeSlot.find().populate('consultationType');
     res.json({ success: true, timeSlots });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -29,8 +30,8 @@ export const getTimeSlot = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Time slot not found' });
     }
     res.json({ success: true, timeSlot });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -44,8 +45,8 @@ export const updateTimeSlot = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Time slot not found' });
     }
     res.json({ success: true, timeSlot });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -59,8 +60,8 @@ export const deleteTimeSlot = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Time slot not found' });
     }
     res.json({ success: true, message: 'Time slot deleted' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -89,7 +90,7 @@ export const createRecurringSlots = async (req, res) => {
       }
     }
     res.status(201).json({ success: true, created: createdSlots.length, slots: createdSlots });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 }; 

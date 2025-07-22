@@ -123,8 +123,8 @@ bookingSchema.pre('save', async function(next) {
         this.timeSlot,
         { $inc: { currentBookings: 1 } }
       );
-    } catch (error) {
-      next(error);
+    } catch {
+      next();
     }
   }
   next();

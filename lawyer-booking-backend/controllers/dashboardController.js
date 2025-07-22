@@ -39,8 +39,8 @@ export const getDashboardStats = async (req, res) => {
         totalRevenue: totalRevenue[0]?.total || 0
       }
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -56,8 +56,8 @@ export const getBookingTrends = async (req, res) => {
       { $sort: { "_id.year": 1, "_id.month": 1 } }
     ]);
     res.json({ success: true, trends });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -73,8 +73,8 @@ export const getConsultationStats = async (req, res) => {
       { $sort: { count: -1 } }
     ]);
     res.json({ success: true, stats });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -85,7 +85,7 @@ export const getRecentBookings = async (req, res) => {
       .limit(10)
       .populate('client consultationType');
     res.json({ success: true, bookings });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 }; 

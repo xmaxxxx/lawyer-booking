@@ -1,0 +1,38 @@
+.booked-day {
+  position: relative;
+  background: #e0f7fa !important;
+  border-radius: 50%;
+}
+.booked-day abbr::after {
+  content: '';
+  display: block;
+  margin: 0 auto;
+  width: 6px;
+  height: 6px;
+  background: #00bcd4;
+  border-radius: 50%;
+  margin-top: 2px;
+}
+
+.slot-day {
+  position: relative;
+  background: #fff3e0 !important;
+  border-radius: 50%;
+}
+.slot-day abbr::after {
+  content: '';
+  display: block;
+  margin: 0 auto;
+  width: 6px;
+  height: 6px;
+  background: #ff9800;
+  border-radius: 50%;
+  margin-top: 2px;
+}
+
+.booked-day.slot-day {
+  background: #d1c4e9 !important;
+}
+.booked-day.slot-day abbr::after {
+  background: #7c4dff;
+} 

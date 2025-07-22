@@ -6,7 +6,7 @@ const API_CONFIG = {
   },
   production: {
     // Use Vite env variable for production API URL
-    baseURL: import.meta.env.VITE_API_URL || 'https://your-backend-domain.onrender.com/api',
+    baseURL: import.meta.env.VITE_API_URL || 'https://lawyer-booking.onrender.com/api',
     timeout: 15000
   }
 };

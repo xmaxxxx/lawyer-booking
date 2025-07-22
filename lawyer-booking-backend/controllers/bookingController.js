@@ -8,8 +8,8 @@ export const createBooking = async (req, res) => {
     });
     await booking.populate('client consultationType timeSlot');
     res.status(201).json({ success: true, booking });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -18,8 +18,8 @@ export const getMyBookings = async (req, res) => {
     const bookings = await Booking.find({ client: req.user._id })
       .populate('consultationType timeSlot');
     res.json({ success: true, bookings });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -37,8 +37,8 @@ export const getBooking = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
     res.json({ success: true, booking });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -58,8 +58,8 @@ export const updateBooking = async (req, res) => {
     await booking.save();
     await booking.populate('client consultationType timeSlot');
     res.json({ success: true, booking });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -78,8 +78,8 @@ export const cancelBooking = async (req, res) => {
     booking.status = 'cancelled';
     await booking.save();
     res.json({ success: true, message: 'Booking cancelled', booking });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -91,8 +91,8 @@ export const getAllBookings = async (req, res) => {
     const bookings = await Booking.find()
       .populate('client consultationType timeSlot');
     res.json({ success: true, bookings });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -110,7 +110,7 @@ export const updateBookingStatus = async (req, res) => {
     await booking.save();
     await booking.populate('client consultationType timeSlot');
     res.json({ success: true, booking });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch {
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 }; 
